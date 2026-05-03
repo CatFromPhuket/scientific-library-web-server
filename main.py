@@ -1,27 +1,25 @@
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 from fastapi import FastAPI, Depends, HTTPException
-from database import engine, SessionLocal, Base
-from models import Scientist, Topic, Paper
+from database import engine, SessionLocal, Base, get_db
+from models import Scientist, Topic, Paper, User
 import schemas, crud
-
+from auth import create_token, get_current_user, get_current_admin
 app = FastAPI()
 
 Base.metadata.create_all(bind=engine)
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @app.get("/")
 def root():
     return {"message": "Scientific Papers API is running"}
 
 @app.post("/scientists/", response_model=schemas.ScientistResponse)
-def create_scientist(scientist: schemas.ScientistCreate, db: Session = Depends(get_db)):
+def create_scientist(
+    scientist: schemas.ScientistCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  
+):
     return crud.create_scientist(db=db, scientist=scientist)
 
 
@@ -39,7 +37,12 @@ def read_scientist(scientist_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/scientists/{scientist_id}", response_model=schemas.ScientistResponse)
-def update_scientist(scientist_id: int, scientist: schemas.ScientistCreate, db: Session = Depends(get_db)):
+def update_scientist(
+    scientist_id: int,
+    scientist: schemas.ScientistCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  
+):
     db_scientist = crud.update_scientist(db, scientist_id=scientist_id, scientist=scientist)
     if db_scientist is None:
         raise HTTPException(status_code=404, detail="Scientist not found")
@@ -47,7 +50,11 @@ def update_scientist(scientist_id: int, scientist: schemas.ScientistCreate, db: 
 
 
 @app.delete("/scientists/{scientist_id}")
-def delete_scientist(scientist_id: int, db: Session = Depends(get_db)):
+def delete_scientist(
+    scientist_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)  
+):
     db_scientist = crud.delete_scientist(db, scientist_id=scientist_id)
     if db_scientist is None:
         raise HTTPException(status_code=404, detail="Scientist not found")
@@ -55,7 +62,11 @@ def delete_scientist(scientist_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/topics/", response_model=schemas.TopicResponse)
-def create_topic(topic: schemas.TopicCreate, db: Session = Depends(get_db)):
+def create_topic(
+    topic: schemas.TopicCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  
+):
     return crud.create_topic(db=db, topic=topic)
 
 
@@ -73,7 +84,11 @@ def read_topic(topic_id: int, db: Session = Depends(get_db)):
 
 
 @app.delete("/topics/{topic_id}")
-def delete_topic(topic_id: int, db: Session = Depends(get_db)):
+def delete_topic(
+    topic_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)  
+):
     db_topic = crud.delete_topic(db, topic_id=topic_id)
     if db_topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
@@ -83,7 +98,11 @@ def delete_topic(topic_id: int, db: Session = Depends(get_db)):
 # ========== PAPERS ==========
 
 @app.post("/papers/", response_model=schemas.PaperResponse)
-def create_paper(paper: schemas.PaperCreate, db: Session = Depends(get_db)):
+def create_paper(
+    paper: schemas.PaperCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  
+):
     return crud.create_paper(db=db, paper=paper)
 
 
@@ -101,7 +120,11 @@ def read_paper(paper_id: int, db: Session = Depends(get_db)):
 
 
 @app.delete("/papers/{paper_id}")
-def delete_paper(paper_id: int, db: Session = Depends(get_db)):
+def delete_paper(
+    paper_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)  # ← добавили
+):
     db_paper = crud.delete_paper(db, paper_id=paper_id)
     if db_paper is None:
         raise HTTPException(status_code=404, detail="Paper not found")
@@ -120,3 +143,30 @@ def read_papers_by_topic(topic_id: int, db: Session = Depends(get_db)):
 def read_papers_by_scientist(scientist_id: int, db: Session = Depends(get_db)):
     """Все статьи учёного"""
     return crud.get_papers_by_scientist(db, scientist_id=scientist_id)
+
+@app.post("/register", response_model=schemas.UserResponse)
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    new_user = User(
+        username=user.username,
+        password=user.password,  # в реальном проекте так нельзя, но у нас учебный
+        role="reader"
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+@app.post("/login", response_model=schemas.Token)  # было TokenData
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if not db_user or db_user.password != user.password:
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    token = create_token()
+    db_user.token = token
+    db.commit()
+
+    return {"access_token": token, "token_type": "bearer"}

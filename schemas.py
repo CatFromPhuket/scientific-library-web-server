@@ -50,3 +50,37 @@ class PaperResponse(PaperBase):
 
     class Config:
         from_attributes = True
+
+# ========== Auth ==========
+
+class UserCreate(BaseModel):
+    """При регистрации"""
+    username: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    """При входе"""
+    username: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    """Что возвращаем клиенту (без пароля)"""
+    id: int
+    username: str
+    role: str
+
+    class Config:
+        from_attributes = True
+
+
+class Token(BaseModel):
+    """Ответ при успешном входе"""
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserUpdateRole(BaseModel):
+    """Для смены роли (только админ)"""
+    role: str

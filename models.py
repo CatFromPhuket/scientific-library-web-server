@@ -10,7 +10,6 @@ class Scientist(Base):
     name = Column(String(100), nullable=False)              # имя
     affiliation = Column(String(200), nullable=True)        # университет / институт
     specialization = Column(String(200), nullable=True)     # научная специализация
-
     # Связь: у одного учёного может быть много статей
     # back_populates говорит SQLAlchemy, что с другой стороны связь называется "scientist"
     papers = relationship("Paper", back_populates="scientist")
@@ -43,3 +42,12 @@ class Paper(Base):
     # Связи: статья "знает" своего автора и свою тему
     scientist = relationship("Scientist", back_populates="papers")
     topic = relationship("Topic", back_populates="papers")
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    password = Column(String(255), nullable=False)          # открытый пароль (учебный проект!)
+    role = Column(String(20), default="reader", nullable=False)
+    token = Column(String(255), unique=True, nullable=True)  # токен, выдаётся при логине
