@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import models, schemas
 
 def get_scientists(db: Session, skip: int = 0, limit: int = 100):
@@ -97,3 +98,34 @@ def get_papers_by_topic(db: Session, topic_id: int):
 def get_papers_by_scientist(db: Session, scientist_id: int):
     """Все статьи конкретного учёного"""
     return db.query(models.Paper).filter(models.Paper.scientist_id == scientist_id).all()
+
+
+# ========Бизнес-логика, рассчет рейтинга ученого ========
+def get_scientist_rating(db: Session, scientist_id: int):
+    scientist = get_scientist(db, scientist_id)
+    if scientist is None:
+        return None
+
+    stats = db.query(
+        func.count(models.Paper.id).label("total_papers"),
+        func.coalesce(func.sum(models.Paper.citations), 0).label("total_citations")
+    ).filter(models.Paper.scientist_id == scientist_id).first()
+
+    total_papers = stats.total_papers
+    total_citations = stats.total_citations
+
+    if total_papers == 0:
+        rating = 0.0
+        avg_citations = 0.0
+    else:
+        avg_citations = total_citations / total_papers
+        rating = round(avg_citations * total_papers, 2)
+
+    return {
+        "scientist_id": scientist_id,
+        "scientist_name": scientist.name,
+        "total_papers": total_papers,
+        "total_citations": total_citations,
+        "avg_citations_per_paper": round(avg_citations, 2),
+        "rating": rating
+    }

@@ -84,3 +84,11 @@ class Token(BaseModel):
 class UserUpdateRole(BaseModel):
     """Для смены роли (только админ)"""
     role: str
+
+class ScientistRatingResponse(BaseModel):
+    scientist_id: int
+    scientist_name: str
+    total_papers: int
+    total_citations: int
+    avg_citations_per_paper: float
+    rating: float

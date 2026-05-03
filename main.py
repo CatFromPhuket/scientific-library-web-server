@@ -170,3 +170,14 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     db.commit()
 
     return {"access_token": token, "token_type": "bearer"}
+
+@app.get("/scientists/{scientist_id}/rating", response_model=schemas.ScientistRatingResponse)
+def get_scientist_rating(scientist_id: int, db: Session = Depends(get_db)):
+    """
+    Бизнес-задача: расчёт рейтинга учёного на основе
+    количества статей и их цитируемости.
+    """
+    result = crud.get_scientist_rating(db, scientist_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Scientist not found")
+    return result
