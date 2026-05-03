@@ -11,9 +11,7 @@ class ScientistCreate(ScientistBase):
 
 class ScientistResponse(ScientistBase):
     id: int
-
-    class Config:
-        from_attributes = True  # чтобы работало преобразование из ORM-объекта
+    model_config = {"from_attributes": True}
 
 class TopicBase(BaseModel):
     name: str
@@ -26,9 +24,7 @@ class TopicCreate(TopicBase):
 
 class TopicResponse(TopicBase):
     id: int
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class PaperBase(BaseModel):
     title: str
@@ -47,9 +43,7 @@ class PaperResponse(PaperBase):
     id: int
     scientist: Optional[ScientistResponse] = None
     topic: Optional[TopicResponse] = None
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # ========== Auth ==========
 
@@ -70,9 +64,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     role: str
-
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class Token(BaseModel):
